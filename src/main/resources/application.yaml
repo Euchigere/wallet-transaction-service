@@ -1,0 +1,59 @@
+server:
+  port: ${SERVER_PORT:8080}
+  error:
+    include-message: always
+  servlet:
+    context-path: /ontop
+
+spring:
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKER_CONNECT:localhost:9092}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    database-platform: org.hibernate.dialect.H2Dialect
+    defer-datasource-initialization: true
+  jackson:
+    date-format: com.fasterxml.jackson.databind.util.StdDateFormat
+  datasource:
+    url: jdbc:h2:${H2_DATABASE_URL:mem:ontop}
+    username: sa
+    password: password
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+  data:
+    redis:
+      database: 0
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      connect-timeout: 1000
+  sql:
+    init:
+      mode: always
+
+ontop:
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKER_CONNECT:localhost:9092}
+  account:
+    account-name: ${ONTOP_ACCOUNT_NAME:ONTOP INC}
+    account-number: ${ONTOP_ACCOUNT_NO:0245253419}
+    routing-number: ${ONTOP_ROUTING_NUMBER:028444018}
+
+
+redis:
+  lock:
+    release-time-seconds: 20
+
+client:
+  payment:
+    host: ${PAYMENT_PROVIDER_HOST:http://mockoon.tools.getontop.com:3000}
+    connection-timeout-ms: 10000
+    read-timeout-ms: 10000
+  wallet:
+    host: ${WALLET_CLIENT_HOST:http://mockoon.tools.getontop.com:3000}
+    connection-timeout-ms: 10000
+    read-timeout-ms: 10000
+
