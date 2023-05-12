@@ -84,6 +84,9 @@ response body: [{ transactionId, userId, amount, created, operation, status }] #
 The transaction history is fetched from the wallet transaction table. 
 The associated transfer status field in the transfer table determines the status of the transaction
 
+## Architectural Diagram
+![architectural diagram](architectural-diagram.png)
+
 
 ## Solution improvement
 - design retry mechanism when call to payment api times out
