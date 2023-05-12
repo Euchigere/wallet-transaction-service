@@ -7,8 +7,10 @@ import com.ontop.wallet.domain.valueobject.UserId;
 import com.ontop.wallet.domain.valueobject.WalletBalance;
 import com.ontop.wallet.domain.valueobject.WalletTransactionId;
 import org.json.JSONException;
+import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestFactory;
 import org.mockito.ArgumentCaptor;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.http.HttpEntity;
@@ -16,12 +18,19 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.ontop.wallet.domain.enums.WalletTransactionOperation.WITHDRAWAL;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.DynamicTest.dynamicTest;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -71,6 +80,40 @@ class WalletClientServiceTest {
             verify(restTemplate).exchange(eq(expectedUrl), eq(HttpMethod.GET), httpEntityCaptor.capture(), eq(String.class));
             final HttpEntity<String> httpEntity = httpEntityCaptor.getValue();
             assertEquals(MediaType.APPLICATION_JSON, httpEntity.getHeaders().getAccept().get(0));
+        }
+
+        @TestFactory
+        List<DynamicTest> shouldTransform4xxClientErrorCorrectly() {
+            return Map.of(
+                    HttpStatus.NOT_FOUND, List.of("INVALID_USER", "user not found"),
+                    HttpStatus.BAD_REQUEST, List.of("INVALID_REQUEST", "bad client request"),
+                    HttpStatus.FORBIDDEN, List.of("CLIENT_ERROR", "unable to complete request")
+            ).entrySet()
+                    .stream()
+                    .map(entry -> dynamicTest(entry.getKey().name(), () -> {
+                when(restTemplate.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(String.class)))
+                        .thenThrow(new HttpClientErrorException(entry.getKey()));
+
+                final WalletClientException thrown = assertThrows(
+                        WalletClientException.class,
+                        () -> walletClientService.getUserWalletBalance(new UserId(102L))
+                );
+                assertEquals(thrown.code(), entry.getValue().get(0));
+                assertEquals(thrown.message(), entry.getValue().get(1));
+            })).collect(Collectors.toList());
+        }
+
+        @Test
+        void shouldTransform5xxServerErrorCorrectly() {
+            when(restTemplate.exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(String.class)))
+                    .thenThrow(new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
+
+            final WalletClientException thrown = assertThrows(
+                    WalletClientException.class,
+                    () -> walletClientService.getUserWalletBalance(new UserId(103L))
+            );
+            assertEquals(thrown.code(), "BAD_GATEWAY");
+            assertEquals(thrown.message(), "bad gateway");
         }
     }
 

@@ -1,8 +1,10 @@
 package com.ontop.wallet.domain.service;
 
 import com.ontop.wallet.config.OntopAccountProperties;
+import com.ontop.wallet.domain.enums.PaymentStatus;
 import com.ontop.wallet.domain.enums.WalletTransactionOperation;
 import com.ontop.wallet.domain.model.OntopAccount;
+import com.ontop.wallet.domain.model.Payment;
 import com.ontop.wallet.domain.model.Transfer;
 import com.ontop.wallet.domain.model.UserAccount;
 import com.ontop.wallet.domain.model.WalletTransaction;
@@ -11,6 +13,8 @@ import com.ontop.wallet.domain.valueobject.AccountNumber;
 import com.ontop.wallet.domain.valueobject.Id;
 import com.ontop.wallet.domain.valueobject.Money;
 import com.ontop.wallet.domain.valueobject.NationalIdNumber;
+import com.ontop.wallet.domain.valueobject.PaymentError;
+import com.ontop.wallet.domain.valueobject.PaymentTransactionId;
 import com.ontop.wallet.domain.valueobject.PersonName;
 import com.ontop.wallet.domain.valueobject.RoutingNumber;
 import com.ontop.wallet.domain.valueobject.UserId;
@@ -18,6 +22,7 @@ import com.ontop.wallet.domain.valueobject.WalletTransactionId;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Random;
 import java.util.UUID;
 
@@ -47,7 +52,7 @@ public class ModelFactory {
                 .id(new Id<>(new Random().nextLong()))
                 .created(Instant.now())
                 .updated(Instant.now())
-                .name(new PersonName("Arya", "Powell"))
+                .userName(new PersonName("Arya", "Powell"))
                 .accountNumber(new AccountNumber(UUID.randomUUID().toString()))
                 .routingNumber(new RoutingNumber(UUID.randomUUID().toString()))
                 .nationalIdNumber(new NationalIdNumber(UUID.randomUUID().toString()))
@@ -64,6 +69,20 @@ public class ModelFactory {
                 .amount(Money.of(getTransactionAmount(operation)))
                 .walletTransactionId(new WalletTransactionId(1010L))
                 .userId(new UserId(101L))
+                .build();
+    }
+
+    public static Payment payment(final PaymentStatus status) {
+        return payment(status, null);
+    }
+
+    public static Payment payment(final PaymentStatus status, final PaymentError error) {
+        return Payment.payment()
+                .transactionId(new PaymentTransactionId(UUID.randomUUID()))
+                .amount(Money.of(100L))
+                .status(status)
+                .error(error)
+                .isCurrent(true)
                 .build();
     }
 
@@ -95,6 +114,7 @@ public class ModelFactory {
                 .targetAccount(transfer.targetAccount())
                 .ontopAccountNumber(transfer.ontopAccountNumber())
                 .walletTransactions(transfer.walletTransactions())
+                .payments(new ArrayList<>())
                 .build();
     }
 
@@ -110,6 +130,7 @@ public class ModelFactory {
                 .transferAmount(transfer.transferAmount())
                 .targetAccount(transfer.targetAccount())
                 .ontopAccountNumber(transfer.ontopAccountNumber())
-                .walletTransactions(transfer.walletTransactions());
+                .walletTransactions(new ArrayList<>(transfer.walletTransactions()))
+                .payments(new ArrayList<>());
     }
 }

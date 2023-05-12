@@ -6,7 +6,6 @@ import com.ontop.wallet.domain.model.WalletTransaction;
 import com.ontop.wallet.domain.valueobject.Money;
 import com.ontop.wallet.domain.exceptions.AccountNotFoundException;
 import com.ontop.wallet.domain.exceptions.ResourceLockedException;
-import com.ontop.wallet.domain.events.TransferInitialisedEvent;
 import com.ontop.wallet.domain.exceptions.TransactionException;
 import com.ontop.wallet.domain.valueobject.UserId;
 import com.ontop.wallet.domain.valueobject.WalletBalance;
@@ -31,7 +30,7 @@ public class TransferInitialisationService {
     private final TransferRepository transferRepository;
     private final TransferInitialisationFactory transferInitialisationFactory;
     private final LockService lockService;
-    private final TransactionEventPublisher eventPublisher;
+    private final TransferPaymentProcessingService processingService;
 
     public Transfer initialiseTransfer(UserId userId, Money amount) throws AccountNotFoundException, ResourceLockedException {
         log.info("Initialising transfer: user={}, amount={}", userId.value(), amount);
@@ -65,8 +64,8 @@ public class TransferInitialisationService {
                             .withWalletTransaction(walletTransaction)
                             .initialize()
             );
-            eventPublisher.publishTransferInitialisedEvent(new TransferInitialisedEvent(transfer.id()));
-            log.info("Transfer initialised: transactionId={}", transfer.id().value());
+            log.info("Transfer initialised: transferId={}", transfer.id().value());
+            processingService.processPayment(transfer.id());
             // send notification to user
             return transfer;
         } finally {
@@ -84,7 +83,7 @@ public class TransferInitialisationService {
             log.debug(message);
             throw new ResourceLockedException(message);
         }
-        log.info("Successfully acquired lock on resource: {}", userId.value());
+        log.info("Successfully acquired lock on resource: {}", getLockKey(userId));
         return lock;
     }
 

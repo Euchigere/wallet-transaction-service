@@ -22,7 +22,7 @@ public class PaymentRequestFactory {
                 && ontopAccount.currency().equals(targetAccount.currency()), "cannot make payment between accounts with different currency");
 
         final Account destinationAccount = Account.of(targetAccount);
-        final Destination destination = new Destination(targetAccount.name().fullName(), destinationAccount);
+        final Destination destination = new Destination(targetAccount.userName().fullName(), destinationAccount);
 
         final Account sourceAccount = Account.of(ontopAccount);
         final Source source = new Source(ontopAccount.type(), new AccountName(ontopAccount.accountName().value()), sourceAccount);

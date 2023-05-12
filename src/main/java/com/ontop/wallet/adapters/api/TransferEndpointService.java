@@ -20,6 +20,6 @@ public class TransferEndpointService {
 
     TransactionResponse transfer(Long userId, BigDecimal amount) throws ResourceLockedException, AccountNotFoundException {
         final Transfer transfer = transferInitialisationService.initialiseTransfer(new UserId(userId), Money.of(amount));
-        return TransactionResponse.of(PROCESSING, transfer.walletTransactions().get(0));
+        return TransactionResponse.of(PROCESSING, transfer.getWithdrawal());
     }
 }

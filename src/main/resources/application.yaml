@@ -6,9 +6,8 @@ server:
     context-path: /ontop
 
 spring:
-  kafka:
-    bootstrap-servers: ${KAFKA_BROKER_CONNECT:localhost:9092}
   jpa:
+    open-in-view: false
     hibernate:
       ddl-auto: update
     database-platform: org.hibernate.dialect.H2Dialect
@@ -18,37 +17,30 @@ spring:
   datasource:
     url: jdbc:h2:${H2_DATABASE_URL:mem:ontop}
     username: sa
-    password: password
+    password: sa
     driver-class-name: org.h2.Driver
   h2:
     console:
       enabled: true
       path: /h2-console
-  data:
-    redis:
-      database: 0
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      connect-timeout: 1000
   sql:
     init:
       mode: always
 
 ontop:
-  kafka:
-    bootstrap-servers: ${KAFKA_BROKER_CONNECT:localhost:9092}
   account:
     account-name: ${ONTOP_ACCOUNT_NAME:ONTOP INC}
     account-number: ${ONTOP_ACCOUNT_NO:0245253419}
     routing-number: ${ONTOP_ROUTING_NUMBER:028444018}
+  payment:
+    max-retries: 2
+    retry-delay-factor-seconds: 5
 
-
-redis:
+jdbc:
   lock:
-    release-time-seconds: 20
+    release-time-seconds: 30
 
 client:
     host: ${CLIENT_HOST:http://mockoon.tools.getontop.com:3000}
     connection-timeout-ms: 10000
     read-timeout-ms: 10000
-

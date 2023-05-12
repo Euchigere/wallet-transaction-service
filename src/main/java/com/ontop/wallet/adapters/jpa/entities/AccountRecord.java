@@ -2,6 +2,7 @@ package com.ontop.wallet.adapters.jpa.entities;
 
 import com.ontop.wallet.domain.model.UserAccount;
 import com.ontop.wallet.domain.valueobject.AccountNumber;
+import com.ontop.wallet.domain.valueobject.BankName;
 import com.ontop.wallet.domain.valueobject.Id;
 import com.ontop.wallet.domain.valueobject.NationalIdNumber;
 import com.ontop.wallet.domain.valueobject.PersonName;
@@ -34,6 +35,9 @@ public class AccountRecord extends BaseEntity {
     @Column(nullable = false)
     private String lastName;
 
+    @Column(nullable = false)
+    private String bankName;
+
     @Column(nullable = false, unique = true)
     private String accountNumber;
 
@@ -52,7 +56,8 @@ public class AccountRecord extends BaseEntity {
                 .created(this.created)
                 .updated(this.updated)
                 .userId(new UserId(this.userId))
-                .name(new PersonName(this.firstName, this.lastName))
+                .userName(new PersonName(this.firstName, this.lastName))
+                .bankName(new BankName(this.bankName))
                 .accountNumber(new AccountNumber(this.accountNumber))
                 .routingNumber(new RoutingNumber(this.routingNumber))
                 .currency(this.currency)
@@ -60,7 +65,7 @@ public class AccountRecord extends BaseEntity {
                 .build();
     }
 
-    public static AccountRecord of(@NonNull UserAccount userAccount) {
+    public static AccountRecord of(@NonNull final UserAccount userAccount) {
         final AccountRecord accountRecord = new AccountRecord();
         if (userAccount.id() != null) {
             accountRecord.id(userAccount.id().value());
@@ -68,8 +73,9 @@ public class AccountRecord extends BaseEntity {
         accountRecord.created(userAccount.created());
         accountRecord.updated(userAccount.updated());
         accountRecord.userId(userAccount.userId().value());
-        accountRecord.firstName(userAccount.name().firstName());
-        accountRecord.lastName(userAccount.name().lastName());
+        accountRecord.firstName(userAccount.userName().firstName());
+        accountRecord.lastName(userAccount.userName().lastName());
+        accountRecord.bankName(userAccount.bankName().value());
         accountRecord.accountNumber(userAccount.accountNumber().value());
         accountRecord.routingNumber(userAccount.routingNumber().value());
         accountRecord.currency(userAccount.currency());

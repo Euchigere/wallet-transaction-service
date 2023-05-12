@@ -7,15 +7,15 @@ import org.springframework.stereotype.Component;
 import java.util.concurrent.locks.Lock;
 
 @Component
-class RedisLockServiceImpl implements LockService {
-    private final LockRegistry lockRegistry;
+class JdbcLockServiceImpl implements LockService {
+    private final LockRegistry jdbcLockRegistry;
 
-    RedisLockServiceImpl(LockRegistry lockRegistry) {
-        this.lockRegistry = lockRegistry;
+    JdbcLockServiceImpl(LockRegistry lockRegistry) {
+        this.jdbcLockRegistry = lockRegistry;
     }
 
     @Override
     public Lock getLock(String lockKey) {
-        return lockRegistry.obtain(lockKey);
+        return jdbcLockRegistry.obtain(lockKey);
     }
 }

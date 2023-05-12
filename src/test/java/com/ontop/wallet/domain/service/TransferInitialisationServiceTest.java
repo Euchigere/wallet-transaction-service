@@ -1,18 +1,17 @@
 package com.ontop.wallet.domain.service;
 
 import com.ontop.wallet.domain.enums.TransferStatus;
-import com.ontop.wallet.domain.events.TransferInitialisedEvent;
 import com.ontop.wallet.domain.exceptions.AccountNotFoundException;
 import com.ontop.wallet.domain.exceptions.ResourceLockedException;
 import com.ontop.wallet.domain.exceptions.TransactionException;
 import com.ontop.wallet.domain.model.Transfer;
 import com.ontop.wallet.domain.model.WalletTransaction;
+import com.ontop.wallet.domain.valueobject.Id;
 import com.ontop.wallet.domain.valueobject.Money;
 import com.ontop.wallet.domain.valueobject.UserId;
 import com.ontop.wallet.domain.valueobject.WalletBalance;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.util.Currency;
@@ -28,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -40,7 +40,7 @@ class TransferInitialisationServiceTest {
     private final TransferRepository transferRepository = mock(TransferRepository.class);
     private final TransferInitialisationFactory transferInitialisationFactory = INITIALISATION_FACTORY;
     private final LockService lockService = mock(LockService.class);
-    private final TransactionEventPublisher eventPublisher = mock(TransactionEventPublisher.class);
+    private final TransferPaymentProcessingService paymentProcessingService = mock(TransferPaymentProcessingService.class);
 
     private final TransferInitialisationService transferInitialisationService = new TransferInitialisationService(
             userWalletService,
@@ -48,7 +48,7 @@ class TransferInitialisationServiceTest {
             transferRepository,
             transferInitialisationFactory,
             lockService,
-            eventPublisher
+            paymentProcessingService
     );
 
     @Nested
@@ -96,7 +96,7 @@ class TransferInitialisationServiceTest {
             assertEquals("user balance not sufficient to process transfer", thrown.message());
             verify(lock).unlock();
             verifyNoInteractions(transferRepository);
-            verifyNoInteractions(eventPublisher);
+            verifyNoInteractions(paymentProcessingService);
         }
 
         @Test
@@ -119,11 +119,10 @@ class TransferInitialisationServiceTest {
         }
 
         @Test
-        void shouldPublishEventWhenTransferIsInitialised() throws AccountNotFoundException, ResourceLockedException {
+        void shouldProcessPaymentWhenTransferIsInitialised() throws AccountNotFoundException, ResourceLockedException {
             final Money amount = Money.of(1000L);
             final UserId userId = new UserId(101L);
             final long transferId = 20L;
-            final ArgumentCaptor<TransferInitialisedEvent> publishEventArgumentCaptor = ArgumentCaptor.forClass(TransferInitialisedEvent.class);
 
             when(userAccountRepository.getUserAccount(userId)).thenReturn(userAccount());
             when(lockService.getLock(anyString())).thenReturn(lock);
@@ -135,8 +134,7 @@ class TransferInitialisationServiceTest {
             transferInitialisationService.initialiseTransfer(userId, amount);
 
             verify(lock).unlock();
-            verify(eventPublisher).publishTransferInitialisedEvent(publishEventArgumentCaptor.capture());
-            assertEquals(transferId, publishEventArgumentCaptor.getValue().transferId().value());
+            verify(paymentProcessingService).processPayment(eq(new Id<>(transferId)));
         }
 
         @Test
@@ -156,7 +154,7 @@ class TransferInitialisationServiceTest {
             final Transfer transfer = transferInitialisationService.initialiseTransfer(userId, amount);
 
             assertEquals(TransferStatus.INITIALIZED, transfer.status());
-            assertTrue(transfer.isValidStateForProcessing());
+            assertTrue(transfer.isValidStateForPayment());
             assertEquals(transferId, transfer.id().value());
             assertEquals(walletTransaction, transfer.walletTransactions().get(0));
             assertEquals(walletTransaction, transfer.getWithdrawal());

@@ -1,7 +1,6 @@
 package com.ontop.wallet.adapters.clients;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ontop.wallet.domain.enums.PaymentStatus;
 import com.ontop.wallet.domain.model.OntopAccount;
 import com.ontop.wallet.domain.model.Payment;
 import com.ontop.wallet.domain.model.Transfer;
@@ -9,16 +8,14 @@ import com.ontop.wallet.domain.model.UserAccount;
 import com.ontop.wallet.domain.service.PaymentProvider;
 import com.ontop.wallet.domain.valueobject.Id;
 import com.ontop.wallet.domain.valueobject.Money;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.json.JsonParseException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
-
-import java.math.BigDecimal;
-import java.util.UUID;
 
 @Slf4j
 @Component
@@ -44,52 +41,42 @@ public class PaymentClientService extends ApiClient implements PaymentProvider {
                 .build();
 
         final String requestBody = writeValueAsString(request).orElseThrow(() -> {
-            log.error("Failed to write payment request body");
-            return new PaymentProviderException("Failed to write payment request body");
+            log.error("Serialisation of payment request body failed: transferId={}", transferId.value());
+            return new PaymentProviderException("Serialisation of payment request body failed");
         });
 
         log.info("Payment request: {}", requestBody);
         final ResponseEntity<String> response;
-        final PaymentApiResponse responseBody;
         try {
             response = post(PAYMENT_URL_PATH, requestBody);
         } catch (HttpClientErrorException | HttpServerErrorException ex) {
             log.error("Payment processing failed: transferId={}", transferId.value(), ex);
-            if (ex.getStatusCode().is4xxClientError()) {
-                throw new PaymentProviderException("Invalid request to provider api");
-            }
-            responseBody = parse(ex.getResponseBodyAsString(), PaymentApiResponse.class).orElseThrow(() -> {
-                log.error("Failed to parse payment exception response body: response={}, statusCode={}",
-                        ex.getResponseBodyAsString(), ex.getStatusCode());
-                return new PaymentProviderException("Failed to parse payment exception response body");
-            });
+            final PaymentApiResponse responseBody = transformException(ex);
             return responseBody.toPayment();
         }
+        final PaymentApiResponse responseBody = parseResponse(response);
         log.info("Payment processing successful: transferId={}; response={}", transferId.value(), response.getBody());
-        responseBody = parse(response.getBody(), PaymentApiResponse.class).orElseGet(() -> {
-            log.error("Payment response parsing failed: response={}, statusCode={}", response.getBody(), response.getStatusCode().value());
-            return fallBackResponse();
-        });
         return responseBody.toPayment();
     }
 
-    record PaymentApiResponse(@NonNull RequestInfo requestInfo, @NonNull PaymentInfo paymentInfo) {
-        record RequestInfo(String status, String error) {}
-        record PaymentInfo(UUID id, BigDecimal amount) {}
-
-        private Payment toPayment() {
-            return new Payment(
-                    paymentInfo.id,
-                    PaymentStatus.valueOf(requestInfo.status.toUpperCase())
-            );
+    private PaymentApiResponse transformException(final HttpStatusCodeException ex) {
+        if (ex.getStatusCode().is4xxClientError()) {
+            throw new PaymentProviderException("Invalid request to provider api");
         }
+
+        return parse(ex.getResponseBodyAsString(), PaymentApiResponse.class).orElseThrow(() -> {
+            log.error("Deserialization of payment api exception failed: response={}, statusCode={}",
+                    ex.getResponseBodyAsString(), ex.getStatusCode());
+            return new PaymentProviderException("Deserialization of payment api exception failed");
+        });
     }
 
-    private PaymentApiResponse fallBackResponse() {
-        return new PaymentApiResponse(
-                new PaymentApiResponse.RequestInfo(PaymentStatus.UNKNOWN.name(), "server error"),
-                new PaymentApiResponse.PaymentInfo(null, null)
-        );
+    private PaymentApiResponse parseResponse(final ResponseEntity<String> response) {
+        return parse(response.getBody(), PaymentApiResponse.class).orElseThrow(() -> {
+            log.error("Deserialization of payment response body failed: response={}, statusCode={}",
+                    response.getBody(), response.getStatusCode().value());
+            return new JsonParseException();
+        });
     }
 
 }

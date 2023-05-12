@@ -1,6 +1,7 @@
 package com.ontop.wallet.domain.model;
 
 import com.ontop.wallet.domain.valueobject.AccountNumber;
+import com.ontop.wallet.domain.valueobject.BankName;
 import com.ontop.wallet.domain.valueobject.Id;
 import com.ontop.wallet.domain.valueobject.NationalIdNumber;
 import com.ontop.wallet.domain.valueobject.PersonName;
@@ -19,7 +20,8 @@ public class UserAccount extends Account {
     private final Instant created;
     private final Instant updated;
     private final UserId userId;
-    private final PersonName name;
+    private final PersonName userName;
+    private final BankName bankName;
     private final NationalIdNumber nationalIdNumber;
 
     public boolean isCompatibleWithCurrency(Currency currency) {
@@ -32,18 +34,19 @@ public class UserAccount extends Account {
             @NonNull final Instant created,
             @NonNull final Instant updated,
             @NonNull final UserId userId,
-            @NonNull final PersonName name,
+            @NonNull final PersonName userName,
             @NonNull final AccountNumber accountNumber,
             @NonNull final Currency currency,
             @NonNull final RoutingNumber routingNumber,
-            @NonNull final NationalIdNumber nationalIdNumber
+            BankName bankName, @NonNull final NationalIdNumber nationalIdNumber
     ) {
         super(accountNumber, currency, routingNumber);
         this.id = id;
         this.created = created;
         this.updated = updated;
         this.userId = userId;
-        this.name = name;
+        this.userName = userName;
+        this.bankName = bankName;
         this.nationalIdNumber = nationalIdNumber;
     }
 }

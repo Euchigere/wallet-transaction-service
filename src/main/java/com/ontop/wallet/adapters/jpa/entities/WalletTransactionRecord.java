@@ -10,17 +10,20 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.NonNull;
 import lombok.Setter;
+import lombok.ToString;
 
 import java.math.BigDecimal;
 
 @Entity
 @Table(name = "wallet_transaction")
 @Setter
+@ToString
 public class WalletTransactionRecord extends BaseEntity {
     @Column(nullable = false)
     private Long userId;
@@ -35,7 +38,7 @@ public class WalletTransactionRecord extends BaseEntity {
     @Column(nullable = false)
     private BigDecimal amount;
 
-    @ManyToOne(optional = false)
+    @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "transfer_id", referencedColumnName = "id")
     private TransferRecord transfer;
 
@@ -51,7 +54,7 @@ public class WalletTransactionRecord extends BaseEntity {
                 .build();
     }
 
-    static WalletTransactionRecord of(@NonNull WalletTransaction walletTransaction) {
+    static WalletTransactionRecord of(@NonNull final WalletTransaction walletTransaction) {
         final WalletTransactionRecord record = new WalletTransactionRecord();
         if (walletTransaction.id() != null) {
             record.id(walletTransaction.id().value());

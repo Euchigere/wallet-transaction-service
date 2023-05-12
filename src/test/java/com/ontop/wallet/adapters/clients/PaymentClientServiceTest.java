@@ -12,6 +12,8 @@ import com.ontop.wallet.domain.valueobject.AccountNumber;
 import com.ontop.wallet.domain.valueobject.Id;
 import com.ontop.wallet.domain.valueobject.Money;
 import com.ontop.wallet.domain.valueobject.NationalIdNumber;
+import com.ontop.wallet.domain.valueobject.PaymentError;
+import com.ontop.wallet.domain.valueobject.PaymentTransactionId;
 import com.ontop.wallet.domain.valueobject.PersonName;
 import com.ontop.wallet.domain.valueobject.RoutingNumber;
 import com.ontop.wallet.domain.valueobject.UserId;
@@ -25,12 +27,16 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -56,7 +62,7 @@ class PaymentClientServiceTest {
             .id((new Id<>(1L)))
             .created(Instant.now())
             .updated(Instant.now())
-            .name(new PersonName("TONY", "STARK"))
+            .userName(new PersonName("TONY", "STARK"))
             .userId(new UserId(101L))
             .accountNumber(new AccountNumber("1885226711"))
             .currency(Money.DEFAULT_CURRENCY)
@@ -89,7 +95,7 @@ class PaymentClientServiceTest {
             }
             """.stripIndent();
 
-    private final String responseBody = """
+    private final String successFulResponse = """
             {
                 "requestInfo": {
                     "status": "Processing"
@@ -101,17 +107,30 @@ class PaymentClientServiceTest {
             }
             """.stripIndent();
 
+    private final String failureResponse = """
+            {
+                "requestInfo": {
+                    "status": "Failed",
+                    "error": "bank rejected payment"
+                },
+                "paymentInfo": {
+                    "amount": 1000,
+                    "id": "7633f4c9-51e4-4b62-97b0-51156966f1d7"
+                }
+            }
+            """.stripIndent();
+
     @Nested
     class MakePayment {
         @Test
         void shouldSerialiseExpectedRequestCorrectly() throws JSONException {
-            final Id<Transfer> transferId = new Id<Transfer>(10L);
+            final Id<Transfer> transferId = new Id<>(10L);
             final Money transferAmount = Money.of(1000L);
             final String requestPath = "/api/v1/payments";
             final ArgumentCaptor<HttpEntity<String>> httpEntityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
 
             when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(String.class)))
-                    .thenReturn(new ResponseEntity<>(responseBody, HttpStatus.OK));
+                    .thenReturn(new ResponseEntity<>(successFulResponse, HttpStatus.OK));
 
             paymentClientService.makePayment(transferId, transferAmount, targetAccount, ontopAccount);
 
@@ -126,16 +145,51 @@ class PaymentClientServiceTest {
 
         @Test
         void shouldDeserializeExpectedResponseBodyCorrectly() {
-            final Id<Transfer> transferId = new Id<Transfer>(10L);
+            final Id<Transfer> transferId = new Id<>(10L);
             final Money transferAmount = Money.of(1000L);
 
             when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(String.class)))
-                    .thenReturn(new ResponseEntity<>(responseBody, HttpStatus.OK));
+                    .thenReturn(new ResponseEntity<>(successFulResponse, HttpStatus.OK));
 
             final Payment payment = paymentClientService.makePayment(transferId, transferAmount, targetAccount, ontopAccount);
 
             assertEquals(PaymentStatus.PROCESSING, payment.status());
-            assertEquals(UUID.fromString("70cfe468-91b9-4e04-8910-5e8257dfadfa"), payment.transactionId());
+            assertEquals(new PaymentTransactionId(UUID.fromString("70cfe468-91b9-4e04-8910-5e8257dfadfa")), payment.transactionId());
+        }
+
+        @Test
+        void shouldTransform5xxServerErrorCorrectly() {
+            final Id<Transfer> transferId = new Id<>(10L);
+            final Money transferAmount = Money.of(1000L);
+
+            when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(String.class)))
+                    .thenThrow(new HttpServerErrorException(
+                            HttpStatus.INTERNAL_SERVER_ERROR,
+                            "internal server error",
+                            failureResponse.getBytes(StandardCharsets.UTF_8),
+                            StandardCharsets.UTF_8
+                    ));
+
+            final Payment payment = paymentClientService.makePayment(transferId, transferAmount, targetAccount, ontopAccount);
+
+            assertEquals(PaymentStatus.FAILED, payment.status());
+            assertEquals(new PaymentTransactionId(UUID.fromString("7633f4c9-51e4-4b62-97b0-51156966f1d7")), payment.transactionId());
+            assertEquals(Money.of(1000L), payment.amount());
+            assertEquals(new PaymentError("bank rejected payment"), payment.error());
+        }
+
+        @Test
+        void shouldTransform4xxClientErrorCorrectly() {
+            final Id<Transfer> transferId = new Id<>(10L);
+            final Money transferAmount = Money.of(1000L);
+
+            when(restTemplate.exchange(anyString(), eq(HttpMethod.POST), any(HttpEntity.class), eq(String.class)))
+                    .thenThrow(new HttpClientErrorException(HttpStatus.BAD_REQUEST));
+
+            final PaymentProviderException thrown = assertThrows(PaymentProviderException.class,
+                    () -> paymentClientService.makePayment(transferId, transferAmount, targetAccount, ontopAccount));
+
+            assertEquals("Invalid request to provider api", thrown.message());
         }
     }
 }

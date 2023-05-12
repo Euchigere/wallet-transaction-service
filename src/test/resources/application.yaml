@@ -1,15 +1,6 @@
-server:
-  port: ${SERVER_PORT:8080}
-  error:
-    include-message: always
-  servlet:
-    context-path: /ontop
-
 spring:
   profiles:
     active: test
-  main:
-    allow-bean-definition-overriding: true
   jpa:
     hibernate:
       ddl-auto: update
@@ -20,7 +11,7 @@ spring:
   datasource:
     url: jdbc:h2:${H2_DATABASE_URL:mem:ontop}
     username: sa
-    password: password
+    password: sa
     driver-class-name: org.h2.Driver
   h2:
     console:
@@ -37,18 +28,11 @@ spring:
       mode: always
 
 ontop:
-  kafka:
-    bootstrap-servers: localhost:9092
   account:
     account-name: ${ONTOP_ACCOUNT_NAME:ONTOP INC}
     account-number: ${ONTOP_ACCOUNT_NO:0245253419}
     routing-number: ${ONTOP_ROUTING_NUMBER:028444018}
 
-redis:
+jdbc:
   lock:
-    release-time-seconds: 20
-
-client:
-  host: ${CLIENT_HOST:http://mockoon.tools.getontop.com:3000}
-  connection-timeout-ms: 10000
-  read-timeout-ms: 10000
+    release-time-seconds: 30

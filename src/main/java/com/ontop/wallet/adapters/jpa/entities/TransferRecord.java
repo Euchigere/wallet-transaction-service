@@ -5,7 +5,6 @@ import com.ontop.wallet.domain.model.Transfer;
 import com.ontop.wallet.domain.valueobject.AccountNumber;
 import com.ontop.wallet.domain.valueobject.Id;
 import com.ontop.wallet.domain.valueobject.Money;
-import com.ontop.wallet.domain.valueobject.PaymentTransactionId;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -18,7 +17,6 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.NonNull;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.Hibernate;
@@ -28,7 +26,6 @@ import java.util.Collections;
 import java.util.Currency;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Entity
@@ -36,10 +33,7 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @ToString
-@RequiredArgsConstructor
 public class TransferRecord extends BaseEntity {
-    private UUID paymentTransactionId;
-
     @Column(nullable = false)
     private String ontopAccountNumber;
 
@@ -65,9 +59,18 @@ public class TransferRecord extends BaseEntity {
     @ToString.Exclude
     private List<WalletTransactionRecord> walletTransactions = Collections.emptyList();
 
+    @OneToMany(mappedBy = "transfer", fetch = FetchType.EAGER, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @ToString.Exclude
+    private List<PaymentRecord> payments = Collections.emptyList();
+
     public void walletTransactions(List<WalletTransactionRecord> walletTransactions) {
         walletTransactions.forEach(wt -> wt.transfer(this));
         this.walletTransactions = walletTransactions;
+    }
+
+    public void payments(List<PaymentRecord> payments) {
+        payments.forEach(p -> p.transfer(this));
+        this.payments = payments;
     }
 
     public Transfer toDomain() {
@@ -75,25 +78,21 @@ public class TransferRecord extends BaseEntity {
                 .id(new Id<>(this.id))
                 .created(this.created)
                 .updated(this.updated)
-                .paymentTransactionId(this.paymentTransactionId == null ? null : new PaymentTransactionId(this.paymentTransactionId))
                 .status(this.status)
                 .transferCharge(Money.of(this.transferCharge))
                 .currency(this.currency)
                 .transferAmount(Money.of(this.transferAmount))
                 .ontopAccountNumber(new AccountNumber(this.ontopAccountNumber))
                 .targetAccount(this.targetAccount.toDomain())
-                .walletTransactions(this.walletTransactions.stream().map(WalletTransactionRecord::toDomain)
-                        .collect(Collectors.toList()))
+                .walletTransactions(this.walletTransactions.stream().map(WalletTransactionRecord::toDomain).collect(Collectors.toList()))
+                .payments(this.payments.stream().map(PaymentRecord::toDomain).collect(Collectors.toList()))
                 .build();
     }
 
-    public static TransferRecord of(@NonNull Transfer transfer) {
+    public static TransferRecord of(@NonNull final Transfer transfer) {
         final TransferRecord record = new TransferRecord();
         if (transfer.id() != null) {
             record.id(transfer.id().value());
-        }
-        if (transfer.paymentTransactionId() != null) {
-            record.paymentTransactionId(transfer.paymentTransactionId().value());
         }
         record.created(transfer.created());
         record.updated(transfer.updated());
@@ -106,6 +105,7 @@ public class TransferRecord extends BaseEntity {
         final List<WalletTransactionRecord> transactions = transfer.walletTransactions().stream()
                 .map(WalletTransactionRecord::of).toList();
         record.walletTransactions(transactions);
+        record.payments(transfer.payments().stream().map(PaymentRecord::of).collect(Collectors.toList()));
         return record;
     }
 

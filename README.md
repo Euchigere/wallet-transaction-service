@@ -2,27 +2,24 @@
 Service to facilitate transfer from user ontop wallet to user bank account
 
 [Read the
-requirements here](./docs/ontop-challenge.pdf).
+requirements here](./docs/ontop-challenge.pdf)
 
 ## Setting up
 ```bash
 Java 17
-Docker
-Redis #optional
-Kafka #optional
+Docker #optional, the app can be run without docker
 ```
-⚠ The services marked optional are not required if one intends to run the app with docker
 
 ## Running
-
+>⚠ Ensure no other process is running on port 8080
 ```bash
 # Locally
-$ startup redis and kafka server locally
 $ ./mvnw spring-boot:run
 
 # Docker
-$./mvnw package
-$ docker-compose up  # use -d to detach
+$ ./mvnw package
+$ docker build -t <IMAGE_NAME> .
+$ docker run -p 8080:8080 <IMAGE_NAME> # use -d to detach
 ```
 
 Once up and running you can use the [postman collection](./docs/postman_collection.json) to import use case
@@ -36,11 +33,7 @@ examples.
 
 SERVER_PORT=8080
 
-KAFKA_BROKER_CONNECT=localhost:9092
 H2_DATABASE_URL=mem:ontop
-
-REDIS_HOST=localhost
-REDIS_PORT=6379
 
 ONTOP_ACCOUNT_NAME=ONTOP INC
 ONTOP_ACCOUNT_NO=0245253419
@@ -55,11 +48,11 @@ While the app is running, the H2 database console can be accessed at -> `http://
 # h2 console connection parameters
 url: jdbc:h2:mem:ontop
 username: sa
-password: password
+password: sa
 ```
 
 ## Solution Design
-The solution design can be found [here](/docs/solution-design.md)
+The solution design can be found [here](./docs/solution-design.md)
 
 ### Areas for code Improvements
 - implement a notification service

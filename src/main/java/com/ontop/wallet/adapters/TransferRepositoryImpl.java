@@ -14,13 +14,13 @@ import org.springframework.stereotype.Component;
 @Component
 @AllArgsConstructor
 class TransferRepositoryImpl implements TransferRepository {
-    private final static String TRANSFER_NOT_FOUND = "transfer with id=%d not found";
+    private final static String TRANSFER_NOT_FOUND = "Transfer with id=%d not found";
 
     private final TransferRecordRepository transferRecordRepository;
 
     @Override
     public Transfer save(Transfer transfer) {
-        TransferRecord transferRecord = transferRecordRepository.save(TransferRecord.of(transfer));
+        TransferRecord transferRecord = transferRecordRepository.saveAndFlush(TransferRecord.of(transfer));
         return transferRecord.toDomain();
     }
 

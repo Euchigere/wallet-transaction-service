@@ -1,15 +1,15 @@
 package com.ontop.wallet.adapters.clients;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ontop.wallet.adapters.clients.WalletClientRequests.WalletTransactionRequest;
+import com.ontop.wallet.adapters.clients.WalletClientResponses.WalletBalanceResponse;
+import com.ontop.wallet.adapters.clients.WalletClientResponses.WalletTransactionResponse;
 import com.ontop.wallet.domain.enums.WalletTransactionOperation;
 import com.ontop.wallet.domain.model.WalletTransaction;
 import com.ontop.wallet.domain.valueobject.WalletBalance;
 import com.ontop.wallet.domain.service.UserWalletService;
 import com.ontop.wallet.domain.valueobject.Money;
 import com.ontop.wallet.domain.valueobject.UserId;
-import com.ontop.wallet.domain.valueobject.WalletTransactionId;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,7 +56,7 @@ public class WalletClientService extends ApiClient implements UserWalletService 
     public WalletTransaction createTransaction(UserId userId, Money amount, WalletTransactionOperation operation) {
         log.info("Creating transaction: userId={}, amount={}, operation={}", userId.value(), amount.value(), operation);
 
-        WalletTransactionRequest request = new WalletTransactionRequest(userId.value(), Objects.requireNonNull(getRequestAmount(amount.value(), operation)));
+        final WalletTransactionRequest request = new WalletTransactionRequest(userId.value(), Objects.requireNonNull(getRequestAmount(amount.value(), operation)));
         String requestBody = writeValueAsString(request).orElseThrow(() -> {
             log.error("Failed to write create transaction request body: ={}", request);
             return new WalletClientException("error writing client request body", "SERVER_ERROR", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -100,34 +100,5 @@ public class WalletClientService extends ApiClient implements UserWalletService 
             return new WalletClientException("bad gateway", "BAD_GATEWAY", HttpStatus.BAD_GATEWAY);
         }
         return new WalletClientException("unable to complete request", "CLIENT_ERROR", ex.getStatusCode());
-    }
-
-    private record WalletBalanceResponse(
-            @NonNull @JsonProperty("user_id") Long userId,
-            @NonNull BigDecimal balance
-    ) {
-        private WalletBalance toWalletBalance() {
-            return new WalletBalance(new UserId(userId()), Money.of(balance()));
-        }
-    }
-
-    private record WalletTransactionRequest(
-            @NonNull @JsonProperty("user_id") Long userId,
-            @NonNull BigDecimal amount
-    ) { }
-
-    private record WalletTransactionResponse(
-            @NonNull @JsonProperty("wallet_transaction_id") Long walletTransactionId,
-            @NonNull BigDecimal amount,
-            @NonNull @JsonProperty("user_id") Long userId
-    ) {
-        private WalletTransaction toTransaction(WalletTransactionOperation operation) {
-            return WalletTransaction.walletTransaction()
-                    .walletTransactionId(new WalletTransactionId(walletTransactionId))
-                    .userId(new UserId(userId))
-                    .amount(Money.of(amount))
-                    .operation(operation)
-                    .build();
-        }
     }
 }
