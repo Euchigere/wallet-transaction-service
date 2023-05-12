@@ -62,5 +62,6 @@ password: password
 The solution design can be found [here](/docs/solution-design.md)
 
 ### Areas for code Improvements
-- add integrations tests
+- implement a notification service
+- add integration tests
 - more unit tests
