@@ -48,12 +48,7 @@ redis:
     release-time-seconds: 20
 
 client:
-  payment:
-    host: ${PAYMENT_PROVIDER_HOST:http://mockoon.tools.getontop.com:3000}
-    connection-timeout-ms: 10000
-    read-timeout-ms: 10000
-  wallet:
-    host: ${WALLET_CLIENT_HOST:http://mockoon.tools.getontop.com:3000}
+    host: ${CLIENT_HOST:http://mockoon.tools.getontop.com:3000}
     connection-timeout-ms: 10000
     read-timeout-ms: 10000
 
